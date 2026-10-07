@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Déverrouille le téléphone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,700&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#f4c96b;--gold2:#ffe9b0;--ink:#f3eefc;--deep:#07051a;--plum:#1a0f3a;--glass:rgba(255,255,255,.07);--line:rgba(255,255,255,.16)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:radial-gradient(120% 90% at 50% 110%,#3a1b5c 0%,var(--plum) 45%,var(--deep) 100%);background-size:100% 140%;animation:drift 14s ease-in-out infinite alternate;color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+@keyframes drift{to{background-position:0 100%}}
+.star{position:fixed;width:2px;height:2px;border-radius:50%;background:#fff;opacity:.2;animation:tw 3s ease-in-out infinite}
+@keyframes tw{50%{opacity:.95;transform:scale(1.6)}}
+canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+section{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:auto}
+#show,#lock{display:none}
+#show{text-align:center}
+.card{width:min(340px,100%);padding:28px 22px 22px;border-radius:28px;background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 30px 80px rgba(0,0,0,.45);text-align:center}
+.card.shake{animation:shake .5s}
+@keyframes shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+h1{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:700;font-size:1.9rem;line-height:1.15}
+
+/* quiz */
+.bar{height:5px;border-radius:5px;background:rgba(255,255,255,.12);overflow:hidden;margin-bottom:10px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),#e59a3c);transition:width .5s ease}
+.cnt{font-size:.85rem;color:#c9bfe6;margin-bottom:14px}
+#q{min-height:3.6rem;display:flex;align-items:center;justify-content:center;transition:opacity .25s,transform .25s}
+#q.out{opacity:0;transform:translateY(8px)}
+.opts{display:grid;gap:10px;margin-top:18px}
+.opts button{min-height:56px;padding:10px 14px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);font-size:1.1rem;font-family:inherit;cursor:pointer;transition:background .15s,transform .15s,box-shadow .15s}
+.opts button:hover,.opts button:active{background:rgba(244,201,107,.25);box-shadow:0 0 18px rgba(244,201,107,.45);transform:scale(.97)}
+.opts.lockd{pointer-events:none}
+.react{min-height:1.5em;margin-top:14px;font-size:.95rem;color:var(--gold2)}
+
+/* code */
+.lock{width:54px;height:54px;margin:0 auto 12px;color:var(--gold);animation:pulse 2.4s ease-in-out infinite}
+.lock .sh{transform-origin:20px 14px;transition:transform .6s cubic-bezier(.3,1.6,.5,1)}
+.open .sh{transform:translateY(-5px) rotate(-35deg)}
+.open{animation:none}
+@keyframes pulse{50%{transform:scale(1.08);filter:drop-shadow(0 0 12px rgba(244,201,107,.7))}}
+#disp{height:52px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;letter-spacing:.14em;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid var(--line);margin:16px 0 8px;font-variant-numeric:tabular-nums;overflow:hidden;white-space:nowrap}
+#err{min-height:1.3em;font-size:.88rem;color:#ff9fb2;margin-bottom:8px}
+#hint{font-size:.9rem;line-height:1.45;color:var(--gold2);margin-bottom:10px}
+#hint p{margin:6px 0;padding:8px 12px;border-radius:12px;background:rgba(244,201,107,.12);border:1px dashed rgba(244,201,107,.45)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pad button{height:54px;border-radius:16px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);font-size:1.3rem;font-family:inherit;cursor:pointer;transition:background .15s,transform .15s,box-shadow .15s}
+.pad button:active,.pad button.lit{background:rgba(244,201,107,.28);box-shadow:0 0 18px rgba(244,201,107,.55);transform:scale(.94)}
+.pad .go{background:linear-gradient(135deg,var(--gold),#e59a3c);color:#2b1700;font-weight:700;font-size:1rem}
+button:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+
+/* joyeux anniversaire */
+.t1{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:500;font-size:clamp(2rem,9vw,3.6rem);color:var(--gold2);text-shadow:0 0 24px rgba(244,201,107,.6)}
+.t1 span{display:inline-block;opacity:0;transform:translateY(14px) scale(.8);animation:in .6s forwards}
+@keyframes in{to{opacity:1;transform:none}}
+.name{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:700;font-size:clamp(3.4rem,17vw,7.5rem);line-height:1.05;background:linear-gradient(100deg,#c98a2b,#fff3c4 30%,#f4c96b 50%,#fff3c4 70%,#c98a2b);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;opacity:0;animation:in 1s 2.3s forwards,shine 4s 3s linear infinite}
+@keyframes shine{to{background-position:-250% 0}}
+.msg{max-width:30em;margin:18px auto 0;font-size:1.05rem;line-height:1.65;color:#e6def8;opacity:0;animation:in 1.2s 3.6s forwards}
+.msg b{display:block;margin-top:10px;color:var(--gold);font-weight:600}
+#again{margin-top:22px;padding:12px 24px;border-radius:999px;border:1px solid var(--gold);background:rgba(0,0,0,.25);color:var(--gold2);font-size:.95rem;cursor:pointer;opacity:0;animation:in 1s 4.6s forwards}
+#mute{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;z-index:5;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--glass);color:var(--ink);font-size:1.15rem;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+@media (prefers-reduced-motion:reduce){body,.star,.lock,.name{animation:none}.name{opacity:1}}
+</style>
+</head>
+<body>
+
+<canvas id="fx"></canvas>
+<button id="mute" aria-label="Couper le son" title="Couper le son">🔊</button>
+
+<!-- 1. Questions -->
+<section id="quiz">
+  <div class="card">
+    <div class="bar"><i id="bf"></i></div>
+    <p class="cnt" id="cnt"></p>
+    <h1 id="q"></h1>
+    <div class="opts" id="opts">
+      <button type="button" id="oa"></button>
+      <button type="button" id="ob"></button>
+    </div>
+    <p class="react" id="rx"></p>
+  </div>
+</section>
+
+<!-- 2. Code -->
+<section id="lock">
+  <div class="card" id="card">
+    <svg class="lock" id="lk" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+      <path class="sh" d="M12 18v-5a8 8 0 0 1 16 0v5"/>
+      <rect x="7" y="18" width="26" height="18" rx="5" fill="rgba(244,201,107,.15)"/>
+      <circle cx="20" cy="27" r="2" fill="currentColor"/>
+    </svg>
+    <h1>Déverrouille le téléphone</h1>
+    <div id="disp" aria-live="polite"></div>
+    <div id="err" role="alert"></div>
+    <div id="hint" aria-live="polite"></div>
+    <div class="pad" id="pad"></div>
+  </div>
+</section>
+
+<!-- 3. Joyeux anniversaire -->
+<section id="show">
+  <h2 class="t1" id="t1"></h2>
+  <div class="name" id="nm"></div>
+  <p class="msg" id="msg"></p>
+  <button id="again">Encore des feux d'artifice !</button>
+</section>
+
+<script>
+/* ====== À PERSONNALISER ====== */
+const CODE = "1545678678";   // le code à saisir (avec ou sans espaces, +, tirets)
+const HINTS = [
+  "💡 Indice 1 : « Si je veux que tu déverrouilles un téléphone sans te dire le PIN, ce sera quoi ? »",
+  "💡 Indice 2 : VIBOU Etienne"
+];
+const NAME = "Vanessa";
+const FROM = "Nikos";
+const MESSAGE = "Aujourd'hui, c'est ton jour, et je voulais te le dire autrement qu'avec un simple message. Merci d'être là, pour tout ce qu'on partage et pour tout ce qui nous attend. Que cette nouvelle année t'apporte de la joie, de la réussite et plein de moments qui te ressemblent.";
+
+// Questions de diversion : [question, choix A, réaction A, choix B, réaction B]
+// Modifie librement les réactions (le 3e et le 5e texte de chaque ligne)
+const QUESTIONS = [
+  [
+    "On commence doucement… tu choisis quoi ? 👀",
+    "🍟 Frite",
+    "Mademoiselle a choisi la facilité 😂 Mais bon… une bonne frite, ça se respecte.",
+    "🍌 Alloco",
+    "Aaaah ! Là on parle 😮‍💨🔥 Tu connais les vraies bonnes choses toi."
+  ],
+
+  [
+    "Question capitale… attention à ta réponse 😏",
+    "🐐 Messi",
+    "Le GOAT ! 🐐✨ Bon choix… tu viens officiellement de gagner 3 points de respect.",
+    "⚽ Ronaldo",
+    "SIIIIUUUUU 😭⚽ Je savais que tu allais sortir ça… tu répètes ça devant le miroir ? 😂"
+  ],
+
+  [
+    "Tu as 24h totalement libres… tu fais quoi ? 👀",
+    "😴 Je dors",
+    "24h ?! 😭 Même ton lit doit commencer à porter plainte. 🛌😂",
+    "🍽️ Je mange",
+    "Je savais que ton estomac allait finir par parler à ta place 😂🍽️"
+  ],
+
+  [
+    "Si tu pouvais avoir UN pouvoir… lequel ? ✨",
+    "🕊️ Super Sayan",
+    "Donc maintenant tu veux devenir Super Sayan ? 😭🔥 Bon… faudra quand même apprendre à voler.",
+    "👁️ Sharingan",
+    "Le Sharingan ? 👀 Donc tu veux lire dans les pensées… intéressant ça 😏"
+  ],
+
+  [
+    "Question qui révèle ta vraie personnalité… 🧐",
+    "🐱 Chat",
+    "Team chat 😼 : indépendante, mystérieuse… et probablement convaincue d'être toujours parfaite.",
+    "🐶 Chien",
+    "Team chien 🐶❤️ : fidèle, adorable… et probablement trop facile à convaincre avec des câlins."
+  ],
+
+  [
+    "Tu préfères sacrifier quoi ? 😈",
+    "⏰ Me lever à 5h",
+    "À 5h du matin ?! 😭 Respect… mais je demande à voir demain matin.",
+    "🌶️ Ne plus jamais manger de piment",
+    "QUOI ?! 😭🌶️ Tu viens vraiment d'abandonner le piment comme ça ? Trahison."
+  ],
+
+  [
+    "🚨 DERNIÈRE QUESTION… réfléchis BIEN 🚨",
+    "🍕 Pizza",
+    "PIZZA 🍕🔥 ! Enfin une personne avec de vraies priorités dans la vie.",
+    "🍚 Riz",
+    "Le riz ? 😭🍚 Je vais faire semblant de ne pas avoir vu ça…"
+  ]
+];
+/* ============================= */
+
+const $ = id => document.getElementById(id);
+const norm = s => String(s).replace(/\D/g, "");
+let cur = "quiz";
+
+/* étoiles */
+for (let i = 0; i < 70; i++) {
+  const s = document.createElement("i");
+  s.className = "star";
+  s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
+  document.body.prepend(s);
+}
+
+/* ====== questions ====== */
+let qi = 0;
+function showQ() {
+  const [q, a, , b] = QUESTIONS[qi];
+  $("q").textContent = q;
+  $("oa").textContent = a;
+  $("ob").textContent = b;
+  $("cnt").textContent = `Question ${qi + 1} sur ${QUESTIONS.length}`;
+  $("bf").style.width = (qi / QUESTIONS.length * 100) + "%";
+  $("rx").textContent = "";
+  $("opts").classList.remove("lockd");
+  $("q").classList.remove("out");
+}
+function answer(choice) {
+  $("opts").classList.add("lockd");
+  $("rx").textContent = QUESTIONS[qi][choice === "a" ? 2 : 4];
+  $("bf").style.width = ((qi + 1) / QUESTIONS.length * 100) + "%";
+  setTimeout(() => $("q").classList.add("out"), 1900);
+  setTimeout(() => {
+    qi++;
+    if (qi < QUESTIONS.length) showQ();
+    else { $("quiz").style.display = "none"; $("lock").style.display = "flex"; cur = "lock"; }
+  }, 2200);
+}
+$("oa").onclick = () => answer("a");
+$("ob").onclick = () => answer("b");
+showQ();
+
+/* ====== clavier ====== */
+let val = "";
+const disp = $("disp"), err = $("err"), card = $("card");
+const pad = $("pad");
+["1","2","3","4","5","6","7","8","9","⌫","0","Ouvrir"].forEach(k => {
+  const b = document.createElement("button");
+  b.textContent = k; b.type = "button";
+  if (k === "Ouvrir") b.className = "go";
+  b.onclick = () => press(k);
+  b.dataset.k = k;
+  pad.appendChild(b);
+});
+function press(k) {
+  err.textContent = "";
+  if (k === "⌫") val = val.slice(0, -1);
+  else if (k === "Ouvrir") return submit();
+  else if (val.length < 16) val += k;
+  disp.textContent = val;
+}
+addEventListener("keydown", e => {
+  if (cur !== "lock") return;
+  if (/^\d$/.test(e.key)) { press(e.key); flash(e.key); }
+  else if (e.key === "Backspace") press("⌫");
+  else if (e.key === "Enter") submit();
+});
+function flash(k) {
+  const b = pad.querySelector(`[data-k="${k}"]`);
+  if (!b) return; b.classList.add("lit"); setTimeout(() => b.classList.remove("lit"), 150);
+}
+
+let fails = 0;
+function submit() {
+  const target = norm(CODE);
+  if (!target) { err.textContent = "Le code n'est pas encore configuré."; return; }
+  if (norm(val) === target) return unlock();
+  err.textContent = "Ce n'est pas le bon code. Réessaie.";
+  fails++;
+  $("hint").innerHTML = "";
+  HINTS.slice(0, Math.min(fails, HINTS.length)).forEach(h => {
+    const p = document.createElement("p"); p.textContent = h; $("hint").appendChild(p);
+  });
+  card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+  val = ""; disp.textContent = "";
+}
+
+/* ====== son ====== */
+let ac = null, muted = false, noise = null;
+function initAudio() {
+  try {
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    ac.resume();
+    noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+    const d = noise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  } catch (e) { ac = null; }
+}
+function burstSound(power) {
+  if (!ac || muted) return;
+  const t = ac.currentTime;
+  // boum grave
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = "sine"; o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(38, t + .5);
+  g.gain.setValueAtTime(.55 * power, t); g.gain.exponentialRampToValueAtTime(.001, t + .6);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .65);
+  // souffle
+  const n = ac.createBufferSource(), f = ac.createBiquadFilter(), ng = ac.createGain();
+  n.buffer = noise; f.type = "lowpass"; f.frequency.setValueAtTime(1400, t); f.frequency.exponentialRampToValueAtTime(180, t + .5);
+  ng.gain.setValueAtTime(.45 * power, t); ng.gain.exponentialRampToValueAtTime(.001, t + .55);
+  n.connect(f).connect(ng).connect(ac.destination); n.start(t); n.stop(t + .6);
+  // crépitement
+  for (let i = 0; i < 9; i++) {
+    const at = t + .12 + Math.random() * .8;
+    const c = ac.createBufferSource(), hf = ac.createBiquadFilter(), cg = ac.createGain();
+    c.buffer = noise; hf.type = "highpass"; hf.frequency.value = 2500 + Math.random() * 3000;
+    cg.gain.setValueAtTime(.12 * power, at); cg.gain.exponentialRampToValueAtTime(.001, at + .05);
+    c.connect(hf).connect(cg).connect(ac.destination); c.start(at, Math.random() * .8); c.stop(at + .06);
+  }
+}
+$("mute").onclick = () => {
+  muted = !muted;
+  $("mute").textContent = muted ? "🔇" : "🔊";
+  $("mute").setAttribute("aria-label", muted ? "Activer le son" : "Couper le son");
+};
+
+/* ====== feux d'artifice + confettis ====== */
+const cv = $("fx"), ctx = cv.getContext("2d");
+let W, H, dpr;
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", resize); resize();
+
+const rockets = [], sparks = [], confetti = [];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function launch(x) {
+  rockets.push({ x: x ?? rnd(W * .12, W * .88), y: H, vy: -rnd(H * .012, H * .017) - 6, top: rnd(H * .12, H * .45), hue: rnd(0, 360) });
+}
+function explode(r) {
+  const n = Math.round(rnd(70, 120)), big = Math.random() < .3;
+  const two = Math.random() < .4, h2 = (r.hue + 140) % 360;
+  for (let i = 0; i < n; i++) {
+    const a = Math.PI * 2 * i / n + rnd(-.05, .05), sp = rnd(1.5, big ? 8 : 6);
+    sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, decay: rnd(.008, .016), hue: two && i % 2 ? h2 : r.hue, w: rnd(1.2, 2.6) });
+  }
+  burstSound(big ? 1 : .7);
+}
+function spawnConfetti(n) {
+  const cols = ["#f4c96b", "#ffe9b0", "#ff7aa8", "#7ad7ff", "#b69cff", "#ffffff"];
+  for (let i = 0; i < n; i++) confetti.push({ x: rnd(0, W), y: -10, vx: rnd(-.8, .8), vy: rnd(1.2, 3.2), r: rnd(0, 6.28), vr: rnd(-.15, .15), w: rnd(5, 10), h: rnd(3, 6), c: cols[Math.random() * cols.length | 0] });
+}
+
+let active = false, nextShot = 0, nextConf = 0;
+function frame(t) {
+  requestAnimationFrame(frame);
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillStyle = "rgba(0,0,0,.22)"; ctx.fillRect(0, 0, W, H);
+  if (!active) return;
+  if (t > nextShot) { launch(); if (Math.random() < .5) setTimeout(() => launch(), 150); nextShot = t + rnd(calm ? 1800 : 650, calm ? 2600 : 1300); }
+  if (t > nextConf && !calm) { spawnConfetti(3); nextConf = t + 90; }
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = rockets.length - 1; i >= 0; i--) {
+    const r = rockets[i]; r.y += r.vy; r.vy *= .985;
+    ctx.fillStyle = `hsl(${r.hue},100%,80%)`; ctx.beginPath(); ctx.arc(r.x, r.y, 2, 0, 6.28); ctx.fill();
+    if (r.y <= r.top || r.vy > -1.5) { explode(r); rockets.splice(i, 1); }
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const p = sparks[i]; p.vx *= .985; p.vy = p.vy * .985 + .05; p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+    if (p.life <= 0) { sparks.splice(i, 1); continue; }
+    ctx.fillStyle = `hsla(${p.hue},100%,${60 + p.life * 20}%,${p.life})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.w * (.5 + p.life * .5), 0, 6.28); ctx.fill();
+  }
+  ctx.globalCompositeOperation = "source-over";
+  for (let i = confetti.length - 1; i >= 0; i--) {
+    const c = confetti[i]; c.x += c.vx + Math.sin(c.y * .02); c.y += c.vy; c.r += c.vr;
+    if (c.y > H + 20) { confetti.splice(i, 1); continue; }
+    ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.r); ctx.fillStyle = c.c; ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h); ctx.restore();
+  }
+}
+requestAnimationFrame(frame);
+
+/* ====== déverrouillage ====== */
+function unlock() {
+  cur = "show";
+  initAudio();
+  $("lk").classList.add("open");
+  setTimeout(() => {
+    $("lock").style.display = "none";
+    $("show").style.display = "flex";
+    const t1 = $("t1");
+    [..."Joyeux anniversaire"].forEach((ch, i) => {
+      const s = document.createElement("span");
+      s.textContent = ch === " " ? "\u00a0" : ch;
+      s.style.animationDelay = (0.2 + i * 0.07) + "s";
+      t1.appendChild(s);
+    });
+    $("nm").textContent = NAME;
+    const m = $("msg"); m.textContent = MESSAGE;
+    const b = document.createElement("b"); b.textContent = "— " + FROM; m.appendChild(b);
+    active = true; nextShot = 0;
+    spawnConfetti(60);
+    [.25, .5, .75].forEach((p, i) => setTimeout(() => launch(W * p), i * 280));
+  }, 750);
+}
+$("again").onclick = () => {
+  for (let i = 0; i < 6; i++) setTimeout(() => launch(), i * 220);
+  spawnConfetti(80);
+};
+</script>
+</body>
+</html>
